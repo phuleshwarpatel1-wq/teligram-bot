@@ -12,127 +12,290 @@ from telegram.ext import (
     filters,
 )
 
-# Firebase URL pattern
-FIREBASE_PATTERN = re.compile(
-    r'https?://[^\s<>"\']+\.(?:firebaseio\.com|firebasedatabase\.app)(?:[^\s<>"\']*)',
-    re.IGNORECASE
-)
+
+def safe_decode(value):
+    try:
+        return urllib.parse.unquote(value)
+    except Exception:
+        return None
 
 
-def decode_text(text):
-    results = [text]
-    current = text
+def decode_base64(value):
+    try:
+        text = str(value).strip()
 
-    for _ in range(8):
-        changed = False
+        # Website jaisa whitespace remove
+        text = re.sub(r"\s+", "", text)
 
-        # URL decode
-        try:
-            decoded = urllib.parse.unquote(current)
-            if decoded != current:
-                results.append(decoded)
-                current = decoded
-                changed = True
-        except Exception:
-            pass
+        # URL-safe Base64
+        text = text.replace("-", "+").replace("_", "/")
 
-        # Base64 decode
-        try:
-            padded = current + "=" * (-len(current) % 4)
-            decoded = base64.b64decode(
-                padded,
-                validate=False
-            ).decode("utf-8", errors="ignore")
+        if not text:
+            return None
 
-            if decoded and decoded != current:
-                results.append(decoded)
-                current = decoded
-                changed = True
-        except Exception:
-            pass
+        # Padding
+        text += "=" * (-len(text) % 4)
 
-        if not changed:
-            break
+        raw = base64.b64decode(text, validate=False)
 
-    return results
+        return raw.decode("utf-8", errors="ignore")
+
+    except Exception:
+        return None
 
 
 def extract_firebase_urls(text):
-    found = []
+    if not text:
+        return []
 
-    for decoded_text in decode_text(text):
+    urls = []
 
-        # Direct Firebase URLs
-        matches = FIREBASE_PATTERN.findall(decoded_text)
-        found.extend(matches)
+    # WEBSITE KE PATTERN JAISE
+    regex = re.compile(
+        r"https?://[a-zA-Z0-9][a-zA-Z0-9._-]*"
+        r"(?:firebaseio\.com|firebasedatabase\.app)",
+        re.IGNORECASE,
+    )
 
-        # Check common query parameters
+    for match in regex.finditer(text):
+
+        url = match.group(0)
+
+        # Trailing dots remove
+        url = re.sub(r"\.+$", "", url)
+
         try:
-            parsed = urllib.parse.urlparse(decoded_text)
-            params = urllib.parse.parse_qs(parsed.query)
+            parsed = urllib.parse.urlparse(url)
 
-            for key in ["s", "url", "link", "data"]:
-                for value in params.get(key, []):
-                    found.extend(
-                        FIREBASE_PATTERN.findall(
-                            urllib.parse.unquote(value)
-                        )
-                    )
+            hostname = parsed.hostname
+
+            if not hostname:
+                continue
+
+            hostname = hostname.lower()
+
+            if (
+                hostname.endswith(".firebaseio.com")
+                or hostname.endswith(".firebasedatabase.app")
+            ):
+                urls.append("https://" + hostname)
+
         except Exception:
-            pass
+            continue
+
+    return list(dict.fromkeys(urls))
+
+
+def get_query_values(text):
+    values = []
+
+    # URL query parameters
+    try:
+        parsed = urllib.parse.urlparse(text)
+
+        query_values = urllib.parse.parse_qs(
+            parsed.query,
+            keep_blank_values=True
+        )
+
+        for value_list in query_values.values():
+
+            for value in value_list:
+
+                values.append(value)
+
+                decoded = safe_decode(value)
+
+                if decoded:
+                    values.append(decoded)
+
+    except Exception:
+        pass
+
+    # Website ke common parameters
+    regex = re.compile(
+        r"(?:^|[?&])(?:s|url|link|data)=([^&#\s]+)",
+        re.IGNORECASE,
+    )
+
+    for match in regex.finditer(text):
+
+        value = match.group(1)
+
+        values.append(value)
+
+        decoded = safe_decode(value)
+
+        if decoded:
+            values.append(decoded)
+
+    return values
+
+
+def generate_candidates(original):
+
+    found = set()
+    queue = []
+
+    def add(value):
+
+        if not isinstance(value, str):
+            return
+
+        value = value.strip()
+
+        if not value:
+            return
+
+        # Website limit
+        if len(value) > 2000000:
+            return
+
+        if value in found:
+            return
+
+        found.add(value)
+        queue.append(value)
+
+    # Original text
+    add(original)
+
+    # Query values
+    for value in get_query_values(original):
+        add(value)
+
+    index = 0
+
+    # Website: maximum 8 levels
+    for _depth in range(8):
+
+        if index >= len(queue):
+            break
+
+        end = len(queue)
+
+        while index < end:
+
+            current = queue[index]
+            index += 1
+
+            # URL decode
+            decoded = safe_decode(current)
+
+            if decoded and decoded != current:
+                add(decoded)
+
+            # Base64 decode
+            decoded_base64 = decode_base64(current)
+
+            if (
+                decoded_base64
+                and decoded_base64 != current
+            ):
+                add(decoded_base64)
+
+            # Query parameters again
+            for value in get_query_values(current):
+                add(value)
+
+    return list(found)
+
+
+def extract_all(text):
+
+    firebase_urls = []
+
+    candidates = generate_candidates(text)
+
+    for candidate in candidates:
+
+        firebase_urls.extend(
+            extract_firebase_urls(candidate)
+        )
 
     # Remove duplicates
-    unique = []
-    for url in found:
-        url = url.rstrip(".,;)]}")
-        if url not in unique:
-            unique.append(url)
-
-    return unique
+    return list(dict.fromkeys(firebase_urls))
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     await update.message.reply_text(
         "🔥 TOKYO FIREBASE BOT\n\n"
-        "Firebase URL bhejo, main automatically extract kar dunga."
+        "Advanced Firebase URL Extractor\n\n"
+        "🔗 URL / Encoded URL / Base64 / Code bhejo."
     )
 
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
     text = update.message.text or ""
 
-    urls = extract_firebase_urls(text)
+    if not text.strip():
+
+        await update.message.reply_text(
+            "⚠️ Pehle URL ya code bhejo."
+        )
+
+        return
+
+    urls = extract_all(text)
 
     if not urls:
+
         await update.message.reply_text(
             "❌ Firebase URL nahi mila."
         )
+
         return
 
-    message = "🔥 Firebase URL Found:\n\n"
+    if len(urls) == 1:
 
-    for i, url in enumerate(urls, 1):
-        message += f"{i}. {url}\n\n"
+        message = (
+            "🔥 Firebase found & extracted ✓\n\n"
+            f"{urls[0]}"
+        )
+
+    else:
+
+        message = (
+            f"🔥 {len(urls)} Firebase URLs found ✓\n\n"
+        )
+
+        for i, url in enumerate(urls, 1):
+
+            message += f"{i}. {url}\n"
 
     await update.message.reply_text(message)
 
 
 def main():
+
     token = os.getenv("BOT_TOKEN")
 
     if not token:
+
         raise RuntimeError(
-            "BOT_TOKEN set nahi hai. Termux me BOT_TOKEN set karo."
+            "BOT_TOKEN set nahi hai."
         )
 
     app = Application.builder().token(token).build()
 
-    app.add_handler(CommandHandler("start", start))
     app.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
+        CommandHandler("start", start)
+    )
+
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            handle_message
+        )
     )
 
     print("🔥 TOKYO FIREBASE BOT STARTED")
+
     app.run_polling()
 
 
