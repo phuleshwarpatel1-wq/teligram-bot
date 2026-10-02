@@ -3,26 +3,32 @@ import re
 import base64
 import urllib.parse
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 from telegram.ext import (
     Application,
     CommandHandler,
+    CallbackQueryHandler,
     MessageHandler,
     ContextTypes,
     filters,
 )
 
-# =========================
+
+# ==========================================
 # CHANNEL SETTINGS
-# =========================
+# ==========================================
 
 CHANNEL_USERNAME = "@tokyooobaby"
 CHANNEL_LINK = "https://t.me/tokyooobaby"
 
 
-# =========================
+# ==========================================
 # URL DECODE
-# =========================
+# ==========================================
 
 def safe_decode(value):
     try:
@@ -31,25 +37,22 @@ def safe_decode(value):
         return None
 
 
-# =========================
+# ==========================================
 # BASE64 DECODE
-# =========================
+# ==========================================
 
 def decode_base64(value):
     try:
         text = str(value).strip()
 
-        # Remove whitespace
         text = re.sub(r"\s+", "", text)
 
-        # URL-safe Base64
         text = text.replace("-", "+")
         text = text.replace("_", "/")
 
         if not text:
             return None
 
-        # Add Base64 padding
         text += "=" * (-len(text) % 4)
 
         raw = base64.b64decode(
@@ -66,9 +69,9 @@ def decode_base64(value):
         return None
 
 
-# =========================
+# ==========================================
 # FIREBASE URL EXTRACTION
-# =========================
+# ==========================================
 
 def extract_firebase_urls(text):
 
@@ -87,7 +90,6 @@ def extract_firebase_urls(text):
 
         url = match.group(0)
 
-        # Remove trailing dots
         url = re.sub(r"\.+$", "", url)
 
         try:
@@ -114,15 +116,16 @@ def extract_firebase_urls(text):
     return list(dict.fromkeys(urls))
 
 
-# =========================
-# QUERY PARAMETERS
-# =========================
+# ==========================================
+# QUERY VALUES
+# ==========================================
 
 def get_query_values(text):
 
     values = []
 
     try:
+
         parsed = urllib.parse.urlparse(text)
 
         query_values = urllib.parse.parse_qs(
@@ -144,7 +147,6 @@ def get_query_values(text):
     except Exception:
         pass
 
-    # Common parameters used for encoded URLs
     regex = re.compile(
         r"(?:^|[?&])"
         r"(?:s|url|link|data)"
@@ -166,9 +168,9 @@ def get_query_values(text):
     return values
 
 
-# =========================
+# ==========================================
 # GENERATE CANDIDATES
-# =========================
+# ==========================================
 
 def generate_candidates(original):
 
@@ -194,16 +196,13 @@ def generate_candidates(original):
         found.add(value)
         queue.append(value)
 
-    # Original text
     add(original)
 
-    # Query values
     for value in get_query_values(original):
         add(value)
 
     index = 0
 
-    # Maximum 8 decoding levels
     for _depth in range(8):
 
         if index >= len(queue):
@@ -216,13 +215,11 @@ def generate_candidates(original):
             current = queue[index]
             index += 1
 
-            # URL decode
             decoded = safe_decode(current)
 
             if decoded and decoded != current:
                 add(decoded)
 
-            # Base64 decode
             decoded_base64 = decode_base64(current)
 
             if (
@@ -231,24 +228,21 @@ def generate_candidates(original):
             ):
                 add(decoded_base64)
 
-            # Search query parameters again
             for value in get_query_values(current):
                 add(value)
 
     return list(found)
 
 
-# =========================
-# FINAL FIREBASE EXTRACTION
-# =========================
+# ==========================================
+# FINAL EXTRACTION
+# ==========================================
 
 def extract_all(text):
 
     firebase_urls = []
 
-    candidates = generate_candidates(text)
-
-    for candidate in candidates:
+    for candidate in generate_candidates(text):
 
         firebase_urls.extend(
             extract_firebase_urls(candidate)
@@ -259,9 +253,9 @@ def extract_all(text):
     )
 
 
-# =========================
-# CHANNEL MEMBERSHIP CHECK
-# =========================
+# ==========================================
+# CHANNEL MEMBERSHIP
+# ==========================================
 
 async def is_channel_member(bot, user_id):
 
@@ -281,18 +275,18 @@ async def is_channel_member(bot, user_id):
     except Exception as error:
 
         print(
-            "Channel membership check error:",
+            "Membership check error:",
             error
         )
 
         return False
 
 
-# =========================
-# JOIN CHANNEL MESSAGE
-# =========================
+# ==========================================
+# JOIN MESSAGE
+# ==========================================
 
-async def send_join_message(update):
+async def show_join_message(update):
 
     keyboard = [
         [
@@ -300,26 +294,32 @@ async def send_join_message(update):
                 "📢 JOIN CHANNEL",
                 url=CHANNEL_LINK
             )
+        ],
+        [
+            InlineKeyboardButton(
+                "✅ I JOINED - VERIFY",
+                callback_data="verify_join"
+            )
         ]
     ]
 
-    reply_markup = InlineKeyboardMarkup(
-        keyboard
-    )
+    markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
-        "🔒 Bot use karne ke liye pehle "
+    await update.effective_message.reply_text(
+        "🔒 BOT LOCKED\n\n"
+        "Bot use karne ke liye pehle "
         "hamara channel join karo.\n\n"
-        "1️⃣ Channel join karo\n"
-        "2️⃣ Phir /start bhejo\n"
-        "3️⃣ Uske baad bot use karo.",
-        reply_markup=reply_markup
+        "1️⃣ JOIN CHANNEL par click karo\n"
+        "2️⃣ Channel join karo\n"
+        "3️⃣ Wapas bot me aao\n"
+        "4️⃣ I JOINED - VERIFY dabao",
+        reply_markup=markup
     )
 
 
-# =========================
-# START COMMAND
-# =========================
+# ==========================================
+# START
+# ==========================================
 
 async def start(
     update: Update,
@@ -338,21 +338,76 @@ async def start(
 
     if not joined:
 
-        await send_join_message(update)
+        await show_join_message(update)
 
         return
 
     await update.message.reply_text(
         "🔥 TOKYO FIREBASE BOT\n\n"
-        "✅ Channel membership verified.\n\n"
-        "🔗 URL / Encoded URL / Base64 / "
-        "Code bhejo."
+        "✅ Channel verified.\n\n"
+        "🔗 Ab URL / HTML / Code / "
+        "Base64 bhejo."
     )
 
 
-# =========================
+# ==========================================
+# VERIFY BUTTON
+# ==========================================
+
+async def verify_join(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    user = query.from_user
+
+    joined = await is_channel_member(
+        context.bot,
+        user.id
+    )
+
+    if not joined:
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "📢 JOIN CHANNEL",
+                    url=CHANNEL_LINK
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔄 VERIFY AGAIN",
+                    callback_data="verify_join"
+                )
+            ]
+        ]
+
+        await query.edit_message_text(
+            "❌ Aap abhi channel ke member nahi ho.\n\n"
+            "Pehle channel join karo, "
+            "phir VERIFY AGAIN dabao.",
+            reply_markup=InlineKeyboardMarkup(
+                keyboard
+            )
+        )
+
+        return
+
+    await query.edit_message_text(
+        "✅ VERIFIED!\n\n"
+        "🔥 TOKYO FIREBASE BOT UNLOCKED\n\n"
+        "Ab apna URL / HTML / Code bhejo."
+    )
+
+
+# ==========================================
 # MESSAGE HANDLER
-# =========================
+# ==========================================
 
 async def handle_message(
     update: Update,
@@ -364,8 +419,7 @@ async def handle_message(
     if not user:
         return
 
-    # Check channel membership
-    # on every message
+    # Every message checks membership
     joined = await is_channel_member(
         context.bot,
         user.id
@@ -373,7 +427,7 @@ async def handle_message(
 
     if not joined:
 
-        await send_join_message(update)
+        await show_join_message(update)
 
         return
 
@@ -424,9 +478,9 @@ async def handle_message(
     )
 
 
-# =========================
+# ==========================================
 # MAIN
-# =========================
+# ==========================================
 
 def main():
 
@@ -449,6 +503,13 @@ def main():
         CommandHandler(
             "start",
             start
+        )
+    )
+
+    app.add_handler(
+        CallbackQueryHandler(
+            verify_join,
+            pattern="^verify_join$"
         )
     )
 
