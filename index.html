@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TOKYO FIREBASE</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 25px 14px 50px;
+      font-family: Arial, Helvetica, sans-serif;
+      background: radial-gradient(
+        circle at top,
+        #172554,
+        #0f172a 48%,
+        #020617
+      );
+      color: #fff;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 850px;
+      margin: auto;
+    }
+
+    .brand {
+      text-align: center;
+      margin: 10px 0 28px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(38px, 9vw, 76px);
+      font-weight: 1000;
+      letter-spacing: 3px;
+      background: linear-gradient(
+        90deg,
+        #22c55e,
+        #06b6d4,
+        #3b82f6,
+        #a855f7,
+        #22c55e
+      );
+      background-size: 300% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation:
+        gradientMove 4s linear infinite,
+        titlePulse 2s ease-in-out infinite alternate;
+    }
+
+    .brand .line {
+      width: 120px;
+      height: 4px;
+      margin: 12px auto;
+      border-radius: 50px;
+      background: linear-gradient(
+        90deg,
+        #22c55e,
+        #06b6d4,
+        #8b5cf6
+      );
+      box-shadow: 0 0 18px rgba(34,197,94,.7);
+    }
+
+    .brand p {
+      margin: 12px 0 0;
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    @keyframes gradientMove {
+      from {
+        background-position: 0% center;
+      }
+      to {
+        background-position: 300% center;
+      }
+    }
+
+    @keyframes titlePulse {
+      from {
+        transform: scale(1);
+      }
+      to {
+        transform: scale(1.025);
+      }
+    }
+
+    .card {
+      padding: 20px;
+      background: rgba(15,23,42,.94);
+      border: 1px solid #334155;
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 9px;
+      color: #cbd5e1;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 170px;
+      padding: 15px;
+      resize: vertical;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      outline: none;
+      background: #020617;
+      color: #fff;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    textarea:focus {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 13px 18px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:active {
+      transform: scale(.96);
+    }
+
+    .extract {
+      flex: 1;
+      background: #22c55e;
+      color: #052e16;
+    }
+
+    .extract:hover {
+      background: #16a34a;
+    }
+
+    .clear {
+      background: #334155;
+      color: #fff;
+    }
+
+    .clear:hover {
+      background: #475569;
+    }
+
+    .history {
+      margin-top: 22px;
+    }
+
+    .historyHead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .historyTitle {
+      font-weight: bold;
+      color: #e2e8f0;
+    }
+
+    .count {
+      margin-top: 3px;
+      color: #64748b;
+      font-size: 12px;
+    }
+
+    .clearHistory {
+      padding: 8px 10px;
+      background: #3f1d1d;
+      color: #fca5a5;
+      font-size: 11px;
+    }
+
+    .item {
+      position: relative;
+      margin-top: 10px;
+      padding: 13px 60px 13px 13px;
+      background: #020617;
+      border: 1px solid #1e3a2a;
+      border-radius: 12px;
+      word-break: break-all;
+      animation: slideIn .22s ease;
+    }
+
+    .item:first-child {
+      border-color: #22c55e;
+      box-shadow: 0 0 18px rgba(34,197,94,.08);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .latest {
+      display: inline-block;
+      margin-bottom: 7px;
+      padding: 3px 7px;
+      border-radius: 20px;
+      background: #052e16;
+      color: #86efac;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    .url {
+      color: #86efac;
+      font-size: 14px;
+      line-height: 1.5;
+      cursor: pointer;
+    }
+
+    .copy {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9px;
+      background: #2563eb;
+      border: 1px solid #3b82f6;
+      color: #fff;
+      font-size: 19px;
+    }
+
+    .copy:hover {
+      background: #1d4ed8;
+    }
+
+    .copy.done {
+      background: #16a34a;
+    }
+
+    .empty {
+      padding: 25px 15px;
+      text-align: center;
+      border: 1px dashed #334155;
+      border-radius: 12px;
+      color: #64748b;
+      font-size: 13px;
+    }
+
+    .error {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #3f1d1d;
+      border: 1px solid #7f1d1d;
+      color: #fca5a5;
+      font-size: 13px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 25px;
+      transform: translate(-50%,20px);
+      padding: 11px 18px;
+      border-radius: 30px;
+      background: #16a34a;
+      color: #fff;
+      font-size: 13px;
+      font-weight: bold;
+      opacity: 0;
+      pointer-events: none;
+      transition: .25s;
+      z-index: 9999;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%,0);
+    }
+
+    @media(max-width:600px) {
+      body {
+        padding: 18px 10px 40px;
+      }
+
+      .card {
+        padding: 14px;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      .extract,
+      .clear {
+        width: 100%;
+      }
+
+      .brand h1 {
+        letter-spacing: 1px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="brand">
+    <h1>TOKYO FIREBASE</h1>
+    <div class="line"></div>
+    <p>Advanced Firebase URL Extractor</p>
+  </div>
+
+  <div class="card">
+
+    <label class="label">
+      🔗 URL / Encoded URL / Base64 / Code Paste Karein
+    </label>
+
+    <textarea
+      id="input"
+      spellcheck="false"
+      placeholder="Paste URL / Code / Base64 here..."
+    ></textarea>
+
+    <div class="actions">
+
+      <button
+        id="extractBtn"
+        class="extract"
+      >
+        🔥 Extract Firebase
+      </button>
+
+      <button
+        id="clearBtn"
+        class="clear"
+      >
+        Clear
+      </button>
+
+    </div>
+
+    <div id="error"></div>
+
+  </div>
+
+  <div class="history">
+
+    <div class="historyHead">
+
+      <div>
+        <div class="historyTitle">
+          📂 Firebase History
+        </div>
+
+        <div
+          id="count"
+          class="count"
+        >
+          0 saved
+        </div>
+      </div>
+
+      <button
+        id="clearHistory"
+        class="clearHistory"
+      >
+        Clear History
+      </button>
+
+    </div>
+
+    <div id="historyList"></div>
+
+  </div>
+
+</div>
+
+<div id="toast" class="toast">
+  Copied ✓
+</div>
+
+<script>
+
+const input =
+  document.getElementById("input");
+
+const extractBtn =
+  document.getElementById("extractBtn");
+
+const clearBtn =
+  document.getElementById("clearBtn");
+
+const clearHistoryBtn =
+  document.getElementById("clearHistory");
+
+const historyList =
+  document.getElementById("historyList");
+
+const count =
+  document.getElementById("count");
+
+const errorBox =
+  document.getElementById("error");
+
+const toast =
+  document.getElementById("toast");
+
+const STORAGE_KEY =
+  "tokyo_firebase_history_final";
+
+let history = [];
+
+try {
+
+  const saved =
+    localStorage.getItem(STORAGE_KEY);
+
+  history =
+    saved
+      ? JSON.parse(saved)
+      : [];
+
+  if (!Array.isArray(history)) {
+    history = [];
+  }
+
+} catch (e) {
+  history = [];
+}
+
+
+function saveHistory() {
+
+  try {
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(history)
+    );
+
+  } catch (e) {}
+
+}
+
+
+function escapeHtml(value) {
+
+  return String(value)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+
+}
+
+
+function safeDecode(value) {
+
+  try {
+    return decodeURIComponent(value);
+  } catch (e) {
+    return null;
+  }
+
+}
+
+
+function decodeBase64(value) {
+
+  try {
+
+    let text =
+      String(value)
+        .trim()
+        .replace(/\s/g,"")
+        .replace(/-/g,"+")
+        .replace(/_/g,"/");
+
+    if (!text) {
+      return null;
+    }
+
+    while (text.length % 4) {
+      text += "=";
+    }
+
+    const binary =
+      atob(text);
+
+    const bytes =
+      new Uint8Array(binary.length);
+
+    for (
+      let i = 0;
+      i < binary.length;
+      i++
+    ) {
+      bytes[i] =
+        binary.charCodeAt(i);
+    }
+
+    return new TextDecoder()
+      .decode(bytes);
+
+  } catch (e) {
+    return null;
+  }
+
+}
+
+
+/*
+  Firebase URL Extractor
+
+  Supported examples:
+
+  https://example-default-rtdb.firebaseio.com
+
+  https://example.firebasedatabase.app
+*/
+
+function extractFirebaseUrls(text) {
+
+  if (!text) {
+    return [];
+  }
+
+  const urls = [];
+
+  const regex =
+    /https?:\/\/[a-zA-Z0-9][a-zA-Z0-9._-]*(?:firebaseio\.com|firebasedatabase\.app)/gi;
+
+  let match;
+
+  while (
+    (match = regex.exec(text)) !== null
+  ) {
+
+    let url =
+      match[0];
+
+    url =
+      url.replace(/\.+$/,"");
+
+    try {
+
+      const parsed =
+        new URL(url);
+
+      const hostname =
+        parsed.hostname.toLowerCase();
+
+      if (
+        hostname.endsWith(".firebaseio.com") ||
+        hostname.endsWith(".firebasedatabase.app")
+      ) {
+
+        urls.push(
+          "https://" + hostname
+        );
+
+      }
+
+    } catch (e) {
+
+      urls.push(url);
+
+    }
+
+  }
+
+  return [
+    ...new Set(urls)
+  ];
+
+}
+
+
+function getQueryValues(text) {
+
+  const values = [];
+
+  try {
+
+    const url =
+      new URL(text);
+
+    for (
+      const value
+      of url.searchParams.values()
+    ) {
+
+      values.push(value);
+
+      const decoded =
+        safeDecode(value);
+
+      if (decoded) {
+        values.push(decoded);
+      }
+
+    }
+
+  } catch (e) {}
+
+
+  const regex =
+    /(?:^|[?&])(?:s|url|link|data)=([^&#\s]+)/gi;
+
+  let match;
+
+  while (
+    (match = regex.exec(text))
+  ) {
+
+    const value =
+      match[1];
+
+    values.push(value);
+
+    const decoded =
+      safeDecode(value);
+
+    if (decoded) {
+      values.push(decoded);
+    }
+
+  }
+
+  return values;
+
+}
+
+
+function generateCandidates(original) {
+
+  const found =
+    new Set();
+
+  const queue = [];
+
+  function add(value) {
+
+    if (
+      typeof value !== "string" ||
+      !value.trim()
+    ) {
+      return;
+    }
+
+    value =
+      value.trim();
+
+    if (value.length > 2000000) {
+      return;
+    }
+
+    if (found.has(value)) {
+      return;
+    }
+
+    found.add(value);
+    queue.push(value);
+
+  }
+
+
+  add(original);
+
+  getQueryValues(original)
+    .forEach(add);
+
+
+  let index = 0;
+
+  for (
+    let depth = 0;
+    depth < 8 &&
+    index < queue.length;
+    depth++
+  ) {
+
+    const end =
+      queue.length;
+
+    while (index < end) {
+
+      const current =
+        queue[index++];
+
+      const decoded =
+        safeDecode(current);
+
+      if (
+        decoded &&
+        decoded !== current
+      ) {
+        add(decoded);
+      }
+
+      const base64 =
+        decodeBase64(current);
+
+      if (
+        base64 &&
+        base64 !== current
+      ) {
+        add(base64);
+      }
+
+      getQueryValues(current)
+        .forEach(add);
+
+    }
+
+  }
+
+  return [...found];
+
+}
+
+
+async function copyText(text) {
+
+  try {
+
+    if (
+      navigator.clipboard &&
+      window.isSecureContext
+    ) {
+
+      await navigator.clipboard.writeText(text);
+
+      showToast(
+        "Firebase copied ✓"
+      );
+
+      return true;
+
+    }
+
+  } catch (e) {}
+
+
+  try {
+
+    const area =
+      document.createElement("textarea");
+
+    area.value =
+      text;
+
+    area.style.position =
+      "fixed";
+
+    area.style.left =
+      "-9999px";
+
+    area.style.top =
+      "0";
+
+    document.body.appendChild(area);
+
+    area.focus();
+
+    area.select();
+
+    area.setSelectionRange(
+      0,
+      area.value.length
+    );
+
+    const success =
+      document.execCommand("copy");
+
+    area.remove();
+
+    if (success) {
+
+      showToast(
+        "Firebase copied ✓"
+      );
+
+      return true;
+
+    }
+
+  } catch (e) {}
+
+
+  showToast(
+    "Copy failed"
+  );
+
+  return false;
+
+}
+
+
+let toastTimer;
+
+
+function showToast(message) {
+
+  toast.textContent =
+    message;
+
+  toast.classList.add("show");
+
+  clearTimeout(toastTimer);
+
+  toastTimer =
+    setTimeout(
+      () => {
+        toast.classList.remove("show");
+      },
+      1800
+    );
+
+}
+
+
+function addHistory(url) {
+
+  history =
+    history.filter(
+      item => item !== url
+    );
+
+  history.unshift(url);
+
+  history =
+    history.slice(0,100);
+
+  saveHistory();
+
+}
+
+
+function renderHistory() {
+
+  count.textContent =
+    history.length + " saved";
+
+
+  if (!history.length) {
+
+    historyList.innerHTML =
+      `
+      <div class="empty">
+        Abhi koi Firebase URL save nahi hai.
+      </div>
+      `;
+
+    return;
+
+  }
+
+
+  historyList.innerHTML =
+    history.map(
+      (url,index) =>
+      `
+      <div class="item">
+
+        ${
+          index === 0
+          ?
+          `
+          <div class="latest">
+            LATEST
+          </div>
+          `
+          :
+          ""
+        }
+
+        <div
+          class="url"
+          data-url="${encodeURIComponent(url)}"
+        >
+          ${escapeHtml(url)}
+        </div>
+
+        <button
+          class="copy"
+          data-url="${encodeURIComponent(url)}"
+          title="Copy Firebase URL"
+          aria-label="Copy Firebase URL"
+        >
+          ⧉
+        </button>
+
+      </div>
+      `
+    ).join("");
+
+
+  historyList
+    .querySelectorAll(".url")
+    .forEach(element => {
+
+      element.addEventListener(
+        "click",
+        () => {
+
+          const url =
+            decodeURIComponent(
+              element.dataset.url
+            );
+
+          copyText(url);
+
+        }
+      );
+
+    });
+
+
+  historyList
+    .querySelectorAll(".copy")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        async event => {
+
+          event.stopPropagation();
+
+          const url =
+            decodeURIComponent(
+              button.dataset.url
+            );
+
+          const copied =
+            await copyText(url);
+
+          if (copied) {
+
+            button.textContent =
+              "✓";
+
+            button.classList.add(
+              "done"
+            );
+
+            setTimeout(
+              () => {
+
+                button.textContent =
+                  "⧉";
+
+                button.classList.remove(
+                  "done"
+                );
+
+              },
+              1000
+            );
+
+          }
+
+        }
+      );
+
+    });
+
+}
+
+
+function extractFirebase() {
+
+  errorBox.innerHTML = "";
+
+  const original =
+    input.value.trim();
+
+
+  if (!original) {
+
+    errorBox.innerHTML =
+      `
+      <div class="error">
+        ⚠️ Pehle URL ya code paste karo.
+      </div>
+      `;
+
+    return;
+
+  }
+
+
+  const candidates =
+    generateCandidates(original);
+
+  let firebaseUrls = [];
+
+
+  for (
+    const candidate
+    of candidates
+  ) {
+
+    firebaseUrls.push(
+      ...extractFirebaseUrls(
+        candidate
+      )
+    );
+
+  }
+
+
+  firebaseUrls =
+    [
+      ...new Set(firebaseUrls)
+    ];
+
+
+  if (!firebaseUrls.length) {
+
+    errorBox.innerHTML =
+      `
+      <div class="error">
+        ❌ Firebase URL nahi mila.
+      </div>
+      `;
+
+    return;
+
+  }
+
+
+  firebaseUrls.forEach(
+    url => addHistory(url)
+  );
+
+
+  renderHistory();
+
+  input.value = "";
+
+
+  showToast(
+    firebaseUrls.length === 1
+    ? "Firebase found & saved ✓"
+    : firebaseUrls.length +
+      " Firebase URLs found ✓"
+  );
+
+}
+
+
+extractBtn.addEventListener(
+  "click",
+  extractFirebase
+);
+
+
+clearBtn.addEventListener(
+  "click",
+  () => {
+
+    input.value = "";
+
+    errorBox.innerHTML = "";
+
+    input.focus();
+
+  }
+);
+
+
+clearHistoryBtn.addEventListener(
+  "click",
+  () => {
+
+    if (!history.length) {
+      return;
+    }
+
+    if (
+      confirm(
+        "Kya poori Firebase history delete karni hai?"
+      )
+    ) {
+
+      history = [];
+
+      saveHistory();
+
+      renderHistory();
+
+      showToast(
+        "History cleared ✓"
+      );
+
+    }
+
+  }
+);
+
+
+input.addEventListener(
+  "keydown",
+  event => {
+
+    if (
+      event.ctrlKey &&
+      event.key === "Enter"
+    ) {
+
+      extractFirebase();
+
+    }
+
+  }
+);
+
+
+renderHistory();
+
+</script>
+
+</body>
+</html>
