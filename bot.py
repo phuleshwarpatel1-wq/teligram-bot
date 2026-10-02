@@ -3,7 +3,7 @@ import re
 import base64
 import urllib.parse
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -12,6 +12,17 @@ from telegram.ext import (
     filters,
 )
 
+# =========================
+# CHANNEL SETTINGS
+# =========================
+
+CHANNEL_USERNAME = "@tokyooobaby"
+CHANNEL_LINK = "https://t.me/tokyooobaby"
+
+
+# =========================
+# URL DECODE
+# =========================
 
 def safe_decode(value):
     try:
@@ -20,48 +31,63 @@ def safe_decode(value):
         return None
 
 
+# =========================
+# BASE64 DECODE
+# =========================
+
 def decode_base64(value):
     try:
         text = str(value).strip()
 
-        # Website jaisa whitespace remove
+        # Remove whitespace
         text = re.sub(r"\s+", "", text)
 
         # URL-safe Base64
-        text = text.replace("-", "+").replace("_", "/")
+        text = text.replace("-", "+")
+        text = text.replace("_", "/")
 
         if not text:
             return None
 
-        # Padding
+        # Add Base64 padding
         text += "=" * (-len(text) % 4)
 
-        raw = base64.b64decode(text, validate=False)
+        raw = base64.b64decode(
+            text,
+            validate=False
+        )
 
-        return raw.decode("utf-8", errors="ignore")
+        return raw.decode(
+            "utf-8",
+            errors="ignore"
+        )
 
     except Exception:
         return None
 
 
+# =========================
+# FIREBASE URL EXTRACTION
+# =========================
+
 def extract_firebase_urls(text):
+
     if not text:
         return []
 
     urls = []
 
-    # WEBSITE KE PATTERN JAISE
     regex = re.compile(
         r"https?://[a-zA-Z0-9][a-zA-Z0-9._-]*"
         r"(?:firebaseio\.com|firebasedatabase\.app)",
-        re.IGNORECASE,
+        re.IGNORECASE
     )
 
     for match in regex.finditer(text):
 
         url = match.group(0)
 
-        # Trailing dots remove
+        # Remove trailing dots
         url = re.sub(r"\.+$", "", url)
 
         try:
@@ -78,7 +104,9 @@ def extract_firebase_urls(text):
                 hostname.endswith(".firebaseio.com")
                 or hostname.endswith(".firebasedatabase.app")
             ):
-                urls.append("https://" + hostname)
+                urls.append(
+                    "https://" + hostname
+                )
 
         except Exception:
             continue
@@ -86,10 +114,14 @@ def extract_firebase_urls(text):
     return list(dict.fromkeys(urls))
 
 
+# =========================
+# QUERY PARAMETERS
+# =========================
+
 def get_query_values(text):
+
     values = []
 
-    # URL query parameters
     try:
         parsed = urllib.parse.urlparse(text)
 
@@ -112,10 +144,12 @@ def get_query_values(text):
     except Exception:
         pass
 
-    # Website ke common parameters
+    # Common parameters used for encoded URLs
     regex = re.compile(
-        r"(?:^|[?&])(?:s|url|link|data)=([^&#\s]+)",
-        re.IGNORECASE,
+        r"(?:^|[?&])"
+        r"(?:s|url|link|data)"
+        r"=([^&#\s]+)",
+        re.IGNORECASE
     )
 
     for match in regex.finditer(text):
@@ -132,6 +166,10 @@ def get_query_values(text):
     return values
 
 
+# =========================
+# GENERATE CANDIDATES
+# =========================
+
 def generate_candidates(original):
 
     found = set()
@@ -147,7 +185,6 @@ def generate_candidates(original):
         if not value:
             return
 
-        # Website limit
         if len(value) > 2000000:
             return
 
@@ -166,7 +203,7 @@ def generate_candidates(original):
 
     index = 0
 
-    # Website: maximum 8 levels
+    # Maximum 8 decoding levels
     for _depth in range(8):
 
         if index >= len(queue):
@@ -194,12 +231,16 @@ def generate_candidates(original):
             ):
                 add(decoded_base64)
 
-            # Query parameters again
+            # Search query parameters again
             for value in get_query_values(current):
                 add(value)
 
     return list(found)
 
+
+# =========================
+# FINAL FIREBASE EXTRACTION
+# =========================
 
 def extract_all(text):
 
@@ -213,23 +254,128 @@ def extract_all(text):
             extract_firebase_urls(candidate)
         )
 
-    # Remove duplicates
-    return list(dict.fromkeys(firebase_urls))
+    return list(
+        dict.fromkeys(firebase_urls)
+    )
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# =========================
+# CHANNEL MEMBERSHIP CHECK
+# =========================
+
+async def is_channel_member(bot, user_id):
+
+    try:
+
+        member = await bot.get_chat_member(
+            chat_id=CHANNEL_USERNAME,
+            user_id=user_id
+        )
+
+        return member.status in (
+            "member",
+            "administrator",
+            "creator"
+        )
+
+    except Exception as error:
+
+        print(
+            "Channel membership check error:",
+            error
+        )
+
+        return False
+
+
+# =========================
+# JOIN CHANNEL MESSAGE
+# =========================
+
+async def send_join_message(update):
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "📢 JOIN CHANNEL",
+                url=CHANNEL_LINK
+            )
+        ]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(
+        keyboard
+    )
+
+    await update.message.reply_text(
+        "🔒 Bot use karne ke liye pehle "
+        "hamara channel join karo.\n\n"
+        "1️⃣ Channel join karo\n"
+        "2️⃣ Phir /start bhejo\n"
+        "3️⃣ Uske baad bot use karo.",
+        reply_markup=reply_markup
+    )
+
+
+# =========================
+# START COMMAND
+# =========================
+
+async def start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+
+    user = update.effective_user
+
+    if not user:
+        return
+
+    joined = await is_channel_member(
+        context.bot,
+        user.id
+    )
+
+    if not joined:
+
+        await send_join_message(update)
+
+        return
 
     await update.message.reply_text(
         "🔥 TOKYO FIREBASE BOT\n\n"
-        "Advanced Firebase URL Extractor\n\n"
-        "🔗 URL / Encoded URL / Base64 / Code bhejo."
+        "✅ Channel membership verified.\n\n"
+        "🔗 URL / Encoded URL / Base64 / "
+        "Code bhejo."
     )
 
+
+# =========================
+# MESSAGE HANDLER
+# =========================
 
 async def handle_message(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
+
+    user = update.effective_user
+
+    if not user:
+        return
+
+    # Check channel membership
+    # on every message
+    joined = await is_channel_member(
+        context.bot,
+        user.id
+    )
+
+    if not joined:
+
+        await send_join_message(update)
+
+        return
 
     text = update.message.text or ""
 
@@ -255,7 +401,7 @@ async def handle_message(
 
         message = (
             "🔥 Firebase found & extracted ✓\n\n"
-            f"{urls[0]}"
+            + urls[0]
         )
 
     else:
@@ -264,12 +410,23 @@ async def handle_message(
             f"🔥 {len(urls)} Firebase URLs found ✓\n\n"
         )
 
-        for i, url in enumerate(urls, 1):
+        for index, url in enumerate(
+            urls,
+            start=1
+        ):
 
-            message += f"{i}. {url}\n"
+            message += (
+                f"{index}. {url}\n"
+            )
 
-    await update.message.reply_text(message)
+    await update.message.reply_text(
+        message
+    )
 
+
+# =========================
+# MAIN
+# =========================
 
 def main():
 
@@ -281,10 +438,18 @@ def main():
             "BOT_TOKEN set nahi hai."
         )
 
-    app = Application.builder().token(token).build()
+    app = (
+        Application
+        .builder()
+        .token(token)
+        .build()
+    )
 
     app.add_handler(
-        CommandHandler("start", start)
+        CommandHandler(
+            "start",
+            start
+        )
     )
 
     app.add_handler(
@@ -294,7 +459,9 @@ def main():
         )
     )
 
-    print("🔥 TOKYO FIREBASE BOT STARTED")
+    print(
+        "🔥 TOKYO FIREBASE BOT STARTED"
+    )
 
     app.run_polling()
 
