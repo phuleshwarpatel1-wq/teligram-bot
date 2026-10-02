@@ -17,7 +17,6 @@ from telegram.ext import (
     filters,
 )
 
-
 # ==========================================
 # CHANNEL SETTINGS
 # ==========================================
@@ -25,8 +24,7 @@ from telegram.ext import (
 CHANNEL_USERNAME = "@tokyooobaby"
 CHANNEL_LINK = "https://t.me/tokyooobaby"
 
-# Private channel where extracted Firebase URLs
-# will also be sent automatically
+# PRIVATE RESULT CHANNEL
 RESULT_CHANNEL_ID = -1004474271816
 
 
@@ -280,7 +278,7 @@ async def is_channel_member(bot, user_id):
 
         print(
             "Membership check error:",
-            error
+            repr(error)
         )
 
         return False
@@ -307,8 +305,6 @@ async def show_join_message(update):
         ]
     ]
 
-    markup = InlineKeyboardMarkup(keyboard)
-
     await update.effective_message.reply_text(
         "🔒 BOT LOCKED\n\n"
         "Bot use karne ke liye pehle "
@@ -317,7 +313,7 @@ async def show_join_message(update):
         "2️⃣ Channel join karo\n"
         "3️⃣ Wapas bot me aao\n"
         "4️⃣ I JOINED - VERIFY dabao",
-        reply_markup=markup
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 
@@ -395,9 +391,7 @@ async def verify_join(
             "❌ Aap abhi channel ke member nahi ho.\n\n"
             "Pehle channel join karo, "
             "phir VERIFY AGAIN dabao.",
-            reply_markup=InlineKeyboardMarkup(
-                keyboard
-            )
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
         return
@@ -407,6 +401,57 @@ async def verify_join(
         "🔥 TOKYO FIREBASE BOT UNLOCKED\n\n"
         "Ab apna URL / HTML / Code bhejo."
     )
+
+
+# ==========================================
+# PRIVATE CHANNEL TEST
+# ==========================================
+
+async def check_result_channel(bot):
+
+    try:
+
+        chat = await bot.get_chat(
+            chat_id=RESULT_CHANNEL_ID
+        )
+
+        print(
+            "✅ RESULT CHANNEL CONNECTED:"
+        )
+
+        print(
+            "Channel ID:",
+            chat.id
+        )
+
+        print(
+            "Channel title:",
+            chat.title
+        )
+
+        # Send startup confirmation
+        await bot.send_message(
+            chat_id=RESULT_CHANNEL_ID,
+            text="🟢 TOKYO FIREBASE BOT CONNECTED"
+        )
+
+        print(
+            "✅ RESULT CHANNEL SEND TEST SUCCESS"
+        )
+
+        return True
+
+    except Exception as error:
+
+        print(
+            "❌ RESULT CHANNEL ERROR:"
+        )
+
+        print(
+            repr(error)
+        )
+
+        return False
 
 
 # ==========================================
@@ -423,7 +468,10 @@ async def handle_message(
     if not user:
         return
 
-    # Check channel membership on every message
+    # --------------------------------------
+    # CHECK PUBLIC CHANNEL MEMBERSHIP
+    # --------------------------------------
+
     joined = await is_channel_member(
         context.bot,
         user.id
@@ -445,7 +493,10 @@ async def handle_message(
 
         return
 
-    # Extract Firebase URLs
+    # --------------------------------------
+    # EXTRACT FIREBASE
+    # --------------------------------------
+
     urls = extract_all(text)
 
     if not urls:
@@ -456,32 +507,59 @@ async def handle_message(
 
         return
 
+    # --------------------------------------
+    # SEND TO PRIVATE CHANNEL
+    # --------------------------------------
 
-    # ======================================
-    # SEND EVERY FIREBASE URL TO PRIVATE
-    # CHANNEL
-    # ======================================
+    channel_success = True
 
-    for url in urls:
+    try:
 
-        try:
+        private_message = (
+            "🔥 FIREBASE URL EXTRACTED\n\n"
+        )
 
-            await context.bot.send_message(
-                chat_id=RESULT_CHANNEL_ID,
-                text=url
+        for index, url in enumerate(
+            urls,
+            start=1
+        ):
+
+            private_message += (
+                f"{index}. {url}\n"
             )
 
-        except Exception as error:
+        private_message += (
+            "\n🤖 TOKYO FIREBASE BOT"
+        )
 
-            print(
-                "Private channel send error:",
-                error
-            )
+        await context.bot.send_message(
+            chat_id=RESULT_CHANNEL_ID,
+            text=private_message,
+            disable_notification=True
+        )
 
+        print(
+            "✅ Firebase sent to private channel:"
+        )
 
-    # ======================================
+        for url in urls:
+            print(url)
+
+    except Exception as error:
+
+        channel_success = False
+
+        print(
+            "❌ PRIVATE CHANNEL SEND ERROR:"
+        )
+
+        print(
+            repr(error)
+        )
+
+    # --------------------------------------
     # SEND RESULT TO USER
-    # ======================================
+    # --------------------------------------
 
     if len(urls) == 1:
 
@@ -505,6 +583,12 @@ async def handle_message(
                 f"{index}. {url}\n"
             )
 
+    # Only tell user if private channel failed
+    if not channel_success:
+
+        message += (
+            "\n\n⚠️ Private channel send failed."
+        )
 
     await update.message.reply_text(
         message
@@ -514,6 +598,73 @@ async def handle_message(
 # ==========================================
 # MAIN
 # ==========================================
+
+def main():
+
+    token = os.getenv("BOT_TOKEN")
+
+    if not token:
+
+        raise RuntimeError(
+            "BOT_TOKEN set nahi hai."
+        )
+
+    app = (
+        Application
+        .builder()
+        .token(token)
+        .build()
+    )
+
+    # /start
+    app.add_handler(
+        CommandHandler(
+            "start",
+            start
+        )
+    )
+
+    # VERIFY
+    app.add_handler(
+        CallbackQueryHandler(
+            verify_join,
+            pattern="^verify_join$"
+        )
+    )
+
+    # NORMAL TEXT
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            handle_message
+        )
+    )
+
+    print(
+        "🔥 TOKYO FIREBASE BOT STARTING..."
+    )
+
+    # Check private channel before polling
+    # This makes channel errors visible in Actions log.
+    import asyncio
+
+    async def startup_check(application):
+
+        await check_result_channel(
+            application.bot
+        )
+
+    app.post_init = startup_check
+
+    print(
+        "🔥 TOKYO FIREBASE BOT STARTED"
+    )
+
+    app.run_polling()
+
+
+if __name__ == "__main__":
+    main()=====================================
 
 def main():
 
